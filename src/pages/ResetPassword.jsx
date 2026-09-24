@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
+import { confirmPasswordReset } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import { authErrorMessage } from "@/lib/authErrors";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,7 +11,9 @@ import AuthLayout from "@/components/AuthLayout";
 
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();
-  const resetToken = searchParams.get("token");
+  // Firebase يرسل الرمز في oobCode عند ضبط رابط الإجراء المخصّص على /reset-password
+  // (Firebase Console → Authentication → Templates → Password reset → Customize action URL).
+  const resetToken = searchParams.get("oobCode");
 
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -25,10 +29,10 @@ export default function ResetPassword() {
     }
     setLoading(true);
     try {
-      await base44.auth.resetPassword({ resetToken, newPassword });
+      await confirmPasswordReset(auth, resetToken, newPassword);
       window.location.href = "/login";
     } catch (err) {
-      setError(err.message || "Failed to reset password");
+      setError(authErrorMessage(err, "Failed to reset password"));
     } finally {
       setLoading(false);
     }

@@ -1,62 +1,60 @@
-# Base44 Project
+# دروب (Droob)
 
-Use this repository to run and edit the app locally, then publish changes back through Base44.
+منصة عربية تربط العملاء بأصحاب المهن لخدمات الصيانة والمنزل.
+الواجهة: React + Vite + Tailwind + shadcn/ui — الخلفية: **Firebase** (Auth + Firestore + Storage + Hosting).
 
-Any change pushed to the repo will also be reflected in the Base44 Builder.
+> المشروع نُقل بالكامل من Base44 إلى Firebase ولم يعد يعتمد على Base44 في أي شيء
+> (باستثناء صور الموقع الثابتة — انظر `src/lib/siteImages.js`).
 
-## Prerequisites
-
-1. Clone the repository using the project's Git URL.
-2. Navigate to the project directory.
-3. Install dependencies: `npm install`.
-4. Install the Base44 CLI: `npm install -g base44@latest`.
-5. Install [Deno](https://docs.deno.com/runtime/getting_started/installation/) — the local Base44 backend runs on it.
-
-Run `base44 --help` (or see the [CLI reference](https://docs.base44.com/developers/references/cli/commands/introduction)) for the full command surface.
-
-## Run Locally
-
-Three commands, from the project root:
+## التشغيل محليًا
 
 ```bash
-base44 login   # one-time per machine
-base44 link    # one-time per clone
-base44 dev     # local backend + frontend together
+npm install
+npm run dev        # http://localhost:5173
 ```
 
-Open the frontend URL that `base44 dev` prints (typically `http://localhost:5173`).
+إعدادات Firebase موجودة في `src/lib/firebase.js` (مشروع `drop-4e1e7`).
+لاستخدام مشروع آخر انسخ `.env.example` إلى `.env.local` واملأ القيم.
 
-Notes:
+## إعداد Firebase (مرة واحدة من Firebase Console)
 
-- **Every fresh clone needs `base44 link`.** It writes `base44/.app.jsonc` (the app-id pointer), which is deliberately gitignored. Your app id is in the Builder URL (`app.base44.com/apps/<id>/...`); `base44 link --help` shows the non-interactive flags.
-- **`base44 dev` runs the frontend for you** (via `site.serveCommand` in this repo's `base44/config.jsonc`) — never run `npm run dev` yourself: alone it serves a UI with no backend behind it (`[base44] Proxy not enabled`, every `/api` call fails), and alongside `base44 dev` the second Vite silently takes the next port and you end up looking at the wrong one.
-- **The app must be published at least once for the UI to load under `base44 dev`.** The frontend boots by fetching app settings from the hosted app; before the first publish that fails and every page redirects to login. The local API works regardless.
-- Entities, functions, and auth run locally — entity data is **in-memory only**, wiped when `base44 dev` restarts. Everything else (Core integrations, OAuth login) is forwarded to your deployed app. Full breakdown: [Local development overview](https://docs.base44.com/developers/backend/overview/local-dev/local-development-overview).
+1. **Authentication → Sign-in method**: فعّل **Email/Password** و **Google**.
+2. **Authentication → Settings → Authorized domains**: أضف نطاق موقعك (و `localhost` للتطوير).
+3. **Firestore Database**: أنشئ قاعدة البيانات.
+4. **Storage**: فعّل التخزين.
+5. (اختياري) **Authentication → Templates → Password reset → Customize action URL**:
+   ضعه `https://<نطاقك>/reset-password` لو أردت صفحة إعادة تعيين كلمة المرور الخاصة بالموقع
+   بدلًا من صفحة Firebase الافتراضية.
 
-## Frontend Only, Hosted Backend
-
-To work on just the frontend against your app's live hosted backend:
+## النشر (Firebase Hosting + القواعد)
 
 ```bash
-base44 dev --remote
+npm install -g firebase-tools
+firebase login
+npm run build
+firebase deploy     # ينشر الموقع + firestore.rules + storage.rules
 ```
 
-⚠️ In this mode writes go to your app's **production data** — plain `base44 dev` keeps everything local.
+## هيكل البيانات
 
-## Publish Your Changes
+| Firestore | الوصف |
+|---|---|
+| `users/{uid}` | ملف المستخدم: `account_type` (client/professional)، `display_name`، `profile_picture`، الموقع، `id_card_uri`/`intro_video_uri` (مسارات Storage خاصة)… |
+| `service_requests/{id}` | طلب خدمة: `service_type`، `description`، `budget`، `execution_date`، `media[]`، `status`، `comments[]`، `messages[]`، `created_by`، `created_at` |
 
-After pushing your changes to git, open the Base44 dashboard and publish the app:
+| Storage | الوصول |
+|---|---|
+| `users/{uid}/public/*` | الصورة الشخصية — عامة |
+| `users/{uid}/private/*` | البطاقة والفيديو التعريفي — لصاحبها فقط |
+| `service_requests/{uid}/*` | صور/فيديو الطلبات — عامة |
 
-```bash
-base44 dashboard open
-```
+القواعد الأمنية في `firestore.rules` و `storage.rules`.
 
-This repo syncs to Base44 through git, so publish from the dashboard rather than `base44 deploy` — a CLI deploy ships your local tree directly, bypassing the sync, and the deployed state silently diverges from the repo.
+## ملفات مهمة
 
-## Docs & Support
-
-GitHub integration: [https://docs.base44.com/developers/app-code/local-development/github](https://docs.base44.com/developers/app-code/local-development/github)
-
-Local development: [https://docs.base44.com/developers/backend/overview/local-dev/local-development-overview](https://docs.base44.com/developers/backend/overview/local-dev/local-development-overview)
-
-Support: [https://app.base44.com/support](https://app.base44.com/support)
+- `src/lib/firebase.js` — تهيئة Firebase
+- `src/lib/AuthContext.jsx` — الجلسة عبر `onAuthStateChanged`
+- `src/lib/firebaseUsers.js` — ملف المستخدم في Firestore
+- `src/lib/serviceRequests.js` — طلبات الخدمة (قراءة/إنشاء/تعليقات/رسائل)
+- `src/lib/storage.js` — رفع الملفات إلى Storage
+- `src/lib/siteImages.js` — كل صور الموقع في مكان واحد

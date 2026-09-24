@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
-import { base44 } from "@/api/base44Client";
+import { listServiceRequests, addComment as addCommentToRequest } from "@/lib/serviceRequests";
+import { useAuth } from "@/lib/AuthContext";
 import { MessageSquare, Send, Wallet, Calendar, RefreshCw, X, Mail, Play } from "lucide-react";
 import MessageModal from "@/components/droob/MessageModal";
 
@@ -27,11 +28,13 @@ export default function RequestsFeed() {
   const [drafts, setDrafts] = useState({});
   const [lightbox, setLightbox] = useState(null); // { url, isVideo }
   const [chat, setChat] = useState(null); // { request, professionalName }
+  const [commentError, setCommentError] = useState({}); // { [requestId]: message }
+  const { isAuthenticated, navigateToLogin } = useAuth();
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const list = await base44.entities.ServiceRequest.list("-created_date", 24);
+      const list = await listServiceRequests(24);
       setRequests(list || []);
     } catch (e) {
       setRequests([]);
@@ -56,18 +59,22 @@ export default function RequestsFeed() {
   const addComment = async (req) => {
     const draft = drafts[req.id] || { name: "", text: "" };
     if (!draft.text.trim() || !draft.name.trim()) return;
+    if (!isAuthenticated) {
+      navigateToLogin();
+      return;
+    }
     const newComment = {
       author_name: draft.name.trim(),
       text: draft.text.trim(),
       created_date: new Date().toISOString(),
     };
-    const updated = [...(req.comments || []), newComment];
     try {
-      await base44.entities.ServiceRequest.update(req.id, { comments: updated });
+      await addCommentToRequest(req.id, newComment);
       setDrafts((p) => ({ ...p, [req.id]: { name: "", text: "" } }));
+      setCommentError((p) => ({ ...p, [req.id]: "" }));
       load();
     } catch (e) {
-      /* ignore */
+      setCommentError((p) => ({ ...p, [req.id]: "تعذّر إضافة التعليق. حاول مرة أخرى." }));
     }
   };
 
@@ -240,6 +247,9 @@ export default function RequestsFeed() {
                           <Send size={16} />
                         </button>
                       </div>
+                      {commentError[req.id] && (
+                        <p className="text-xs text-destructive mt-2">{commentError[req.id]}</p>
+                      )}
                     </div>
                   </div>
                 </article>

@@ -1,0 +1,33 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isOwner(userId) { return request.auth != null && request.auth.uid == userId; }
+    function isMedia() {
+      return request.resource.contentType.matches('image/.*')
+        || request.resource.contentType.matches('video/.*');
+    }
+
+    // الصورة الشخصية: عامة للقراءة، وصاحبها فقط يرفع.
+    match /users/{userId}/public/{fileName} {
+      allow read: if true;
+      allow write: if isOwner(userId)
+        && request.resource.contentType.matches('image/.*')
+        && request.resource.size < 10 * 1024 * 1024;
+    }
+
+    // البطاقة الشخصية والفيديو التعريفي: خاصة بصاحبها فقط.
+    match /users/{userId}/private/{fileName} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId) && isMedia()
+        && request.resource.size < 300 * 1024 * 1024;
+    }
+
+    // صور/فيديو طلبات الخدمة: عامة للقراءة، وصاحبها فقط يرفع.
+    match /service_requests/{userId}/{fileName} {
+      allow read: if true;
+      allow write: if isOwner(userId) && isMedia()
+        && request.resource.size < 100 * 1024 * 1024;
+    }
+  }
+}

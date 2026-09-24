@@ -1,0 +1,49 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isAdmin() {
+      return signedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // ملف المستخدم: صاحبه فقط يقرأ ويكتب، ولا يستطيع ترقية نفسه إلى admin.
+    match /users/{userId} {
+      allow read: if signedIn() && (request.auth.uid == userId || isAdmin());
+      allow create: if signedIn() && request.auth.uid == userId
+        && request.resource.data.get('role', 'user') == 'user';
+      allow update: if signedIn() && request.auth.uid == userId
+        && request.resource.data.get('role', 'user') == resource.data.get('role', 'user');
+      allow delete: if isAdmin();
+    }
+
+    // طلبات الخدمة (بديل كيان ServiceRequest في Base44).
+    match /service_requests/{requestId} {
+      // الطلبات تظهر للجميع في الصفحة الرئيسية.
+      allow read: if true;
+
+      allow create: if signedIn()
+        && request.resource.data.created_by == request.auth.uid
+        && request.resource.data.service_type is string
+        && request.resource.data.description is string
+        && request.resource.data.status == 'open';
+
+      // أي مستخدم مسجّل يضيف تعليقًا أو رسالة فقط (لا يعدّل باقي الحقول).
+      // صاحب الطلب أو الأدمن يعدّل كل شيء عدا المالك.
+      allow update: if signedIn() && (
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['comments', 'messages'])
+          && request.resource.data.get('comments', []).size() >= resource.data.get('comments', []).size()
+          && request.resource.data.get('messages', []).size() >= resource.data.get('messages', []).size()
+        )
+        || (
+          (resource.data.created_by == request.auth.uid || isAdmin())
+          && request.resource.data.created_by == resource.data.created_by
+        )
+      );
+
+      allow delete: if signedIn() && (resource.data.created_by == request.auth.uid || isAdmin());
+    }
+  }
+}

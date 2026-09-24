@@ -1,4 +1,5 @@
 import { ArrowLeft } from "lucide-react";
+import { siteImages } from "@/lib/siteImages";
 
 const categories = [
   {
@@ -6,42 +7,42 @@ const categories = [
     desc: "إصلاح أعطال، تمديد، إنارة ولوحات كهربائية",
     count: "٨٤٠ محترف",
     urgent: true,
-    img: "https://media.base44.com/images/public/6ab3fe7bd798cd1d9d8eca7c/570108bce_generated_c367fa61.jpg",
+    img: siteImages.category1,
   },
   {
     name: "سباكة",
     desc: "تسريبات، سخانات، تركيب أدوات صحية",
     count: "٦٢٠ محترف",
     urgent: true,
-    img: "https://media.base44.com/images/public/6ab3fe7bd798cd1d9d8eca7c/a40df07e9_generated_bff6a651.jpg",
+    img: siteImages.category2,
   },
   {
     name: "دهان ونقش",
     desc: "دهان جدران، معجون، ديكورات وطلاء داخلي",
     count: "٧٣٠ محترف",
     urgent: false,
-    img: "https://media.base44.com/images/public/6ab3fe7bd798cd1d9d8eca7c/4fec86070_generated_f85e0109.jpg",
+    img: siteImages.category3,
   },
   {
     name: "نجارة",
     desc: "أبواب، خزائن، أرضيات وتصليح أثاث",
     count: "٤١٠ محترف",
     urgent: false,
-    img: "https://media.base44.com/images/public/6ab3fe7bd798cd1d9d8eca7c/ecaf8f876_generated_122be2f0.jpg",
+    img: siteImages.category4,
   },
   {
     name: "تكييف وتبريد",
     desc: "صيانة، تنظيف، تركيب وحدات وتعبئة فريون",
     count: "٣٥٠ محترف",
     urgent: true,
-    img: "https://media.base44.com/images/public/6ab3fe7bd798cd1d9d8eca7c/60ceda666_generated_48e10376.jpg",
+    img: siteImages.category5,
   },
   {
     name: "أعمال أخرى",
     desc: "سيراميك، زجاج، نظافة، صيانة عامة والمزيد",
     count: "٩٥٠ محترف",
     urgent: false,
-    img: "https://media.base44.com/images/public/6ab3fe7bd798cd1d9d8eca7c/8038fb2cb_generated_e094d350.jpg",
+    img: siteImages.category6,
   },
 ];
 

@@ -1,4 +1,5 @@
 import Navbar from "@/components/droob/Navbar";
+import { siteImages } from "@/lib/siteImages";
 import ScrollProgress from "@/components/droob/ScrollProgress";
 import Hero from "@/components/droob/Hero";
 import Categories from "@/components/droob/Categories";
@@ -15,7 +16,7 @@ export default function Home() {
       <ScrollProgress />
       <Navbar />
       <main>
-        <Hero heroImage="https://media.base44.com/images/public/6ab3fe7bd798cd1d9d8eca7c/8038fb2cb_generated_e094d350.jpg" />
+        <Hero heroImage={siteImages.category6} />
         <Categories />
         <HowItWorks />
         <FeaturedPros />

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { X, Send, Loader2 } from "lucide-react";
-import { base44 } from "@/api/base44Client";
+import { addMessage } from "@/lib/serviceRequests";
+import { useAuth } from "@/lib/AuthContext";
 
 function timeAgo(iso) {
   if (!iso) return "";
@@ -20,6 +21,7 @@ export default function MessageModal({ open, onClose, requestId, professionalNam
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [allMessages, setAllMessages] = useState(messages || []);
+  const { isAuthenticated, navigateToLogin } = useAuth();
 
   useEffect(() => {
     if (open) setAllMessages(messages || []);
@@ -31,6 +33,10 @@ export default function MessageModal({ open, onClose, requestId, professionalNam
 
   const send = async () => {
     if (!fromName.trim() || !text.trim() || sending) return;
+    if (!isAuthenticated) {
+      navigateToLogin();
+      return;
+    }
     setSending(true);
     setError("");
     const newMsg = {
@@ -40,9 +46,8 @@ export default function MessageModal({ open, onClose, requestId, professionalNam
       created_date: new Date().toISOString(),
     };
     try {
-      const updated = [...allMessages, newMsg];
-      await base44.entities.ServiceRequest.update(requestId, { messages: updated });
-      setAllMessages(updated);
+      await addMessage(requestId, newMsg);
+      setAllMessages((prev) => [...prev, newMsg]);
       setText("");
       onSent();
     } catch (e) {

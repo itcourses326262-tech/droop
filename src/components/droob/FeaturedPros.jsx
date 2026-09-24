@@ -1,4 +1,5 @@
 import { Star, BadgeCheck, Clock, ArrowLeft } from "lucide-react";
+import { siteImages } from "@/lib/siteImages";
 
 const pros = [
   {
@@ -7,7 +8,7 @@ const pros = [
     rating: 4.9,
     jobs: 312,
     eta: "٢٥ دقيقة",
-    img: "https://media.base44.com/images/public/6ab3fe7bd798cd1d9d8eca7c/456be3400_generated_c0940ea4.jpg",
+    img: siteImages.pro1,
     tags: ["أعطال طارئة", "تمديد", "إنارة"],
   },
   {
@@ -16,7 +17,7 @@ const pros = [
     rating: 4.8,
     jobs: 268,
     eta: "٣٠ دقيقة",
-    img: "https://media.base44.com/images/public/6ab3fe7bd798cd1d9d8eca7c/63d7c403f_generated_88cba957.jpg",
+    img: siteImages.pro2,
     tags: ["تسريبات", "سخانات", "تركيب"],
   },
 ];

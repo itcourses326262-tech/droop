@@ -1,17 +1,25 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
+import {
+  createUserWithEmailAndPassword,
+  sendEmailVerification,
+  signInWithPopup,
+  GoogleAuthProvider,
+  updateProfile,
+} from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import { uploadFile } from "@/lib/storage";
+import { saveUserProfile } from "@/lib/firebaseUsers";
+import { authErrorMessage } from "@/lib/authErrors";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { UserPlus, Mail, Lock, Loader2, Camera, CreditCard, Video, User, Briefcase, Circle } from "lucide-react";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import AuthLayout from "@/components/AuthLayout";
 import LocationPicker from "@/components/droob/LocationPicker";
 import LiveVideoRecorder from "@/components/droob/LiveVideoRecorder";
 import GoogleIcon from "@/components/GoogleIcon";
-import { registerFirebaseUser } from "@/lib/firebaseAuth";
 import { toast } from "@/components/ui/use-toast";
 import { safeReturnTo } from "@/lib/authReturnTo";
 
@@ -48,8 +56,7 @@ export default function Register() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showOtp, setShowOtp] = useState(false);
-  const [otpCode, setOtpCode] = useState("");
+  const [showVerify, setShowVerify] = useState(false);
 
   const onProfileChange = (e) => {
     const f = e.target.files?.[0];
@@ -130,39 +137,46 @@ export default function Register() {
     }
     setLoading(true);
     try {
-      await base44.auth.register({ email, password });
-      // حساب موازٍ في Firebase Auth ليظهر المستخدم في قائمة Firebase → Users
-      await registerFirebaseUser(email, password);
-      setShowOtp(true);
+      const { user } = await createUserWithEmailAndPassword(auth, email, password);
+      await saveProfile(user);
+      await sendEmailVerification(user).catch((e) => console.error("Email verification failed:", e));
+      setShowVerify(true);
     } catch (err) {
-      setError(err.message || "فشل التسجيل");
+      setError(authErrorMessage(err, "فشل التسجيل"));
     } finally {
       setLoading(false);
     }
   };
 
-  const saveProfile = async () => {
-    const profileRes = profileFile
-      ? await base44.integrations.Core.UploadPublicFile({ file: profileFile })
+  // يرفع الملفات إلى Firebase Storage ويحفظ ملف المستخدم في Firestore (users/{uid}).
+  const saveProfile = async (user) => {
+    const uid = user.uid;
+    const profile = profileFile
+      ? await uploadFile(`users/${uid}/public`, profileFile)
       : null;
-    let idCardUri = null;
-    let introVideoUri = null;
+    let idCardPath = null;
+    let introVideoPath = null;
     if (accountType === "professional") {
       if (idCardFile) {
-        const r = await base44.integrations.Core.UploadPrivateFile({ file: idCardFile });
-        idCardUri = r.file_uri;
+        idCardPath = (await uploadFile(`users/${uid}/private`, idCardFile, { isPrivate: true })).path;
       }
       if (videoFile) {
-        const r = await base44.integrations.Core.UploadPrivateFile({ file: videoFile });
-        introVideoUri = r.file_uri;
+        introVideoPath = (await uploadFile(`users/${uid}/private`, videoFile, { isPrivate: true })).path;
       }
     }
-    await base44.auth.updateMe({
+    await updateProfile(user, {
+      displayName: displayName.trim(),
+      photoURL: profile?.url || null,
+    });
+    await saveUserProfile(uid, {
+      email: user.email,
+      role: "user",
       account_type: accountType,
       display_name: displayName.trim(),
-      profile_picture: profileRes?.file_url || null,
-      id_card_uri: idCardUri,
-      intro_video_uri: introVideoUri,
+      full_name: displayName.trim(),
+      profile_picture: profile?.url || null,
+      id_card_uri: idCardPath,
+      intro_video_uri: introVideoPath,
       personal_details: personalDetails.trim(),
       location_lat: location.lat,
       location_lng: location.lng,
@@ -170,67 +184,40 @@ export default function Register() {
     });
   };
 
-  const handleVerify = async () => {
-    setError("");
-    setLoading(true);
-    try {
-      const result = await base44.auth.verifyOtp({ email, otpCode });
-      if (result?.access_token) {
-        base44.auth.setToken(result.access_token);
-      }
-      await saveProfile();
-      window.location.href = safeReturnTo();
-    } catch (err) {
-      setError(err.message || "رمز التحقق غير صالح");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleResend = async () => {
     setError("");
     try {
-      await base44.auth.resendOtp(email);
-      toast({ title: "تم الإرسال", description: "تحقق من بريدك الإلكتروني للحصول على الرمز الجديد." });
+      await sendEmailVerification(auth.currentUser);
+      toast({ title: "تم الإرسال", description: "تحقق من بريدك الإلكتروني للحصول على رابط التفعيل." });
     } catch (err) {
-      setError(err.message || "تعذّر إعادة الإرسال");
+      setError(authErrorMessage(err, "تعذّر إعادة الإرسال"));
     }
   };
 
-  const handleGoogle = () => {
-    base44.auth.loginWithProvider("google", safeReturnTo());
+  const handleGoogle = async () => {
+    setError("");
+    try {
+      await signInWithPopup(auth, new GoogleAuthProvider());
+      window.location.href = safeReturnTo();
+    } catch (err) {
+      setError(authErrorMessage(err, "تعذّر الدخول عبر Google"));
+    }
   };
 
-  if (showOtp) {
+  if (showVerify) {
     return (
-      <AuthLayout icon={Mail} title="تأكيد البريد الإلكتروني" subtitle={`أرسلنا رمزًا إلى ${email}`}>
+      <AuthLayout icon={Mail} title="تأكيد البريد الإلكتروني" subtitle={`أرسلنا رابط تفعيل إلى ${email}`}>
         {error && (
           <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">{error}</div>
         )}
-        <div className="flex justify-center mb-6">
-          <InputOTP maxLength={6} value={otpCode} onChange={setOtpCode} autoFocus autoComplete="one-time-code">
-            <InputOTPGroup>
-              <InputOTPSlot index={0} />
-              <InputOTPSlot index={1} />
-              <InputOTPSlot index={2} />
-              <InputOTPSlot index={3} />
-              <InputOTPSlot index={4} />
-              <InputOTPSlot index={5} />
-            </InputOTPGroup>
-          </InputOTP>
-        </div>
-        <Button className="w-full h-12 font-medium" onClick={handleVerify} disabled={loading || otpCode.length < 6}>
-          {loading ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              جارٍ إعداد الحساب…
-            </>
-          ) : (
-            "تأكيد"
-          )}
+        <p className="text-sm text-foreground text-center mb-6 leading-relaxed">
+          تم إنشاء حسابك بنجاح. افتح بريدك واضغط على رابط التفعيل لتأكيد عنوانك.
+        </p>
+        <Button className="w-full h-12 font-medium" onClick={() => (window.location.href = safeReturnTo())}>
+          متابعة
         </Button>
         <p className="text-center text-sm text-muted-foreground mt-4">
-          لم يصلك الرمز؟{" "}
+          لم يصلك الرابط؟{" "}
           <button onClick={handleResend} className="text-primary font-medium hover:underline">
             إعادة الإرسال
           </button>

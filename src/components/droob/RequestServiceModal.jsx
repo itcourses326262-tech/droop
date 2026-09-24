@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { X, UploadCloud, Check, Image as ImageIcon, Video, Trash2, Loader2 } from "lucide-react";
-import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
+import { uploadFile } from "@/lib/storage";
+import { createServiceRequest } from "@/lib/serviceRequests";
 
 const serviceTypes = ["كهرباء", "سباكة", "دهان", "نجارة", "تكييف", "أخرى"];
 
@@ -13,6 +15,7 @@ export default function RequestServiceModal({ open, onClose }) {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const { user, isAuthenticated, navigateToLogin } = useAuth();
 
   if (!open) return null;
 
@@ -34,22 +37,24 @@ export default function RequestServiceModal({ open, onClose }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (submitting) return;
+    if (!isAuthenticated) {
+      navigateToLogin();
+      return;
+    }
     setSubmitting(true);
     setError("");
     try {
       const media = [];
       for (const f of files) {
-        const { file_url } = await base44.integrations.Core.UploadPublicFile({ file: f.file });
-        media.push(file_url);
+        const { url } = await uploadFile(`service_requests/${user.uid}`, f.file);
+        media.push(url);
       }
-      await base44.entities.ServiceRequest.create({
+      await createServiceRequest(user, {
         service_type: service,
         description: desc,
         budget: budget ? Number(budget) : null,
         execution_date: date || null,
         media,
-        status: "open",
-        comments: [],
       });
       window.dispatchEvent(new Event("droob:request-created"));
       setSubmitted(true);
