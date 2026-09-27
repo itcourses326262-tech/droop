@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { X, UploadCloud, Check, Image as ImageIcon, Video, Trash2, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
-import { uploadFile } from "@/lib/storage";
+import { uploadFile, storageEnabled } from "@/lib/storage";
 import { createServiceRequest } from "@/lib/serviceRequests";
 
 const serviceTypes = ["كهرباء", "سباكة", "دهان", "نجارة", "تكييف", "أخرى"];
@@ -135,6 +135,7 @@ export default function RequestServiceModal({ open, onClose }) {
             </div>
 
             {/* Upload */}
+            {storageEnabled && (
             <div>
               <label className="block text-sm font-medium text-foreground mb-2.5">
                 صورة أو فيديو للمشكلة
@@ -178,6 +179,7 @@ export default function RequestServiceModal({ open, onClose }) {
                 </div>
               )}
             </div>
+            )}
 
             {/* Description */}
             <div>
