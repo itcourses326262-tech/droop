@@ -7,7 +7,8 @@ export const siteImages = {
   category3: "/images/category3.svg", // دهان ونقش
   category4: "/images/category4.svg", // نجارة
   category5: "/images/category5.svg", // تكييف وتبريد
-  category6: "/images/category6.svg", // أعمال أخرى + خلفية الواجهة الرئيسية
+  hero: "/images/hero.jpg", // خلفية الواجهة الرئيسية
+  category6: "/images/category6.svg", // أعمال أخرى
   pro1: "/images/pro1.svg", // محمود عبد الرحمن
   pro2: "/images/pro2.svg", // أحمد سمير
 };

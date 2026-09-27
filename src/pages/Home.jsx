@@ -16,7 +16,7 @@ export default function Home() {
       <ScrollProgress />
       <Navbar />
       <main>
-        <Hero heroImage={siteImages.category6} />
+        <Hero heroImage={siteImages.hero} />
         <Categories />
         <HowItWorks />
         <FeaturedPros />
