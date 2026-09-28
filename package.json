@@ -12,7 +12,9 @@
     "preview": "vite preview",
     "download-images": "node scripts/download-images.mjs",
     "test:rules": "firebase emulators:exec --only firestore --project droob-test \"node tests/firestore.rules.test.mjs\"",
-    "build:preview": "vite build --mode preview"
+    "build:preview": "vite build --mode preview",
+    "deploy": "vite build && firebase deploy",
+    "firebase:login": "firebase login"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^17.0.0",

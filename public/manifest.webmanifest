@@ -1,0 +1,21 @@
+{
+  "name": "دروب — خدمات المهن الحرفية",
+  "short_name": "دروب",
+  "description": "اطلب فنيًا موثوقًا: كهرباء، سباكة، دهان، نجارة، تكييف والمزيد.",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f5f8f7",
+  "theme_color": "#00827F",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "الرسائل", "url": "/messages" },
+    { "name": "طلباتي", "url": "/dashboard" }
+  ]
+}
