@@ -1,5 +1,6 @@
 import { auth, db } from "@/lib/firebase";
 import { updateProfile } from "firebase/auth";
+import { PREVIEW, SAMPLE_PROS } from "@/lib/previewData";
 import {
   collection,
   doc,
@@ -87,6 +88,7 @@ export async function syncAuthProfile({ displayName, photoURL }) {
 }
 
 export async function getPublicProfile(uid) {
+  if (PREVIEW) return SAMPLE_PROS.find((p) => p.id === uid) || null;
   const snap = await getDoc(doc(db, "public_profiles", uid));
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;
 }
@@ -98,6 +100,7 @@ export function ratingOf(profile) {
 
 // قائمة أصحاب المهن مرتبة حسب التقييم (الترتيب في المتصفح لتجنّب فهارس مركّبة).
 export async function listProfessionals({ profession, max = 60 } = {}) {
+  if (PREVIEW) return SAMPLE_PROS.filter((p) => !profession || p.profession === profession);
   const constraints = [where("account_type", "==", "professional")];
   if (profession) constraints.push(where("profession", "==", profession));
   const snap = await getDocs(query(collection(db, "public_profiles"), ...constraints, limit(max)));

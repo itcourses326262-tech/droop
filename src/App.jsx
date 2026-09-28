@@ -1,7 +1,9 @@
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { useEffect } from 'react';
+import { BrowserRouter, MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
+import { PREVIEW } from '@/lib/previewData';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import ScrollToTop from './components/ScrollToTop';
@@ -18,6 +20,23 @@ import Professionals from '@/pages/Professionals';
 import ProfessionalProfile from '@/pages/ProfessionalProfile';
 import RequestDetails from '@/pages/RequestDetails';
 import Admin from '@/pages/Admin';
+
+// نسخة المعاينة (ملف واحد يُعرض داخل Claude أو يُفتح من الكمبيوتر) لا تعتمد على رابط الصفحة.
+const Router = PREVIEW ? MemoryRouter : BrowserRouter;
+
+function PreviewBanner() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    const go = (e) => navigate(e.detail);
+    window.addEventListener('droob:navigate', go);
+    return () => window.removeEventListener('droob:navigate', go);
+  }, [navigate]);
+  return (
+    <div className="fixed bottom-0 inset-x-0 z-[100] bg-[#0c1a19] text-white/85 text-xs text-center px-4 py-2" style={{ paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom, 0px))' }}>
+      نسخة معاينة — البيانات المعروضة أمثلة، وتسجيل الدخول والمراسلة يعملان في الموقع المنشور فقط.
+    </div>
+  );
+}
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth } = useAuth();
@@ -64,7 +83,9 @@ function App() {
       <QueryClientProvider client={queryClientInstance}>
         <Router>
           <ScrollToTop />
+          {PREVIEW && <PreviewBanner />}
           <AuthenticatedApp />
+          {PREVIEW && <div className="h-10 bg-[#0c1a19]" />}
         </Router>
         <Toaster />
       </QueryClientProvider>

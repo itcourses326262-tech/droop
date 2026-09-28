@@ -1,4 +1,5 @@
 import { db } from "@/lib/firebase";
+import { PREVIEW, SAMPLE_COMMENTS, SAMPLE_REQUESTS } from "@/lib/previewData";
 import {
   addDoc,
   collection,
@@ -27,11 +28,13 @@ const fromDoc = (d) => {
 };
 
 export async function listServiceRequests(max = 24) {
+  if (PREVIEW) return SAMPLE_REQUESTS;
   const snap = await getDocs(query(col, orderBy("created_at", "desc"), limit(max)));
   return snap.docs.map(fromDoc);
 }
 
 export async function getServiceRequest(id) {
+  if (PREVIEW) return SAMPLE_REQUESTS.find((r) => r.id === id) || null;
   const snap = await getDoc(doc(db, "service_requests", id));
   return snap.exists() ? fromDoc(snap) : null;
 }
@@ -83,6 +86,10 @@ export async function deleteServiceRequest(requestId) {
 const commentsCol = (requestId) => collection(db, "service_requests", requestId, "comments");
 
 export function subscribeComments(requestId, cb, onError) {
+  if (PREVIEW) {
+    cb(SAMPLE_COMMENTS[requestId] || []);
+    return () => {};
+  }
   return onSnapshot(
     query(commentsCol(requestId), orderBy("created_at", "asc"), limit(100)),
     (snap) => cb(snap.docs.map(fromDoc)),

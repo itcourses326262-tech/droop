@@ -11,6 +11,7 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { toIso } from "@/lib/serviceRequests";
+import { PREVIEW, SAMPLE_REVIEWS } from "@/lib/previewData";
 
 // reviews/{requestId} → تقييم واحد لكل طلب مكتمل، يكتبه صاحب الطلب لصاحب المهنة المسند إليه.
 // في نفس الدفعة يُحدَّث مجموع/عدد التقييمات في public_profiles/{pro} (القواعد تتحقق من التطابق).
@@ -36,6 +37,7 @@ export async function submitReview(request, reviewer, { rating, text }) {
 }
 
 export async function listReviewsForPro(uid) {
+  if (PREVIEW) return SAMPLE_REVIEWS.filter((r) => r.pro_uid === uid);
   const snap = await getDocs(query(collection(db, "reviews"), where("pro_uid", "==", uid), limit(100)));
   return snap.docs
     .map((d) => ({ id: d.id, ...d.data(), created_date: toIso(d.data().created_at) }))

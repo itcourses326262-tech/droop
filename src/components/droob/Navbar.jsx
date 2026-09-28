@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Menu,
   X,
@@ -31,13 +31,30 @@ const links = [
   { label: "الطلبات", href: "/#feed" },
 ];
 
+// روابط أقسام الصفحة الرئيسية: تمرير داخل الصفحة، أو الانتقال للرئيسية أولًا.
 function NavItem({ item, className, onClick }) {
-  return item.to ? (
-    <Link to={item.to} className={className} onClick={onClick}>
-      {item.label}
-    </Link>
-  ) : (
-    <a href={item.href} className={className} onClick={onClick}>
+  const location = useLocation();
+  const navigate = useNavigate();
+  if (item.to) {
+    return (
+      <Link to={item.to} className={className} onClick={onClick}>
+        {item.label}
+      </Link>
+    );
+  }
+  const id = item.href.split("#")[1];
+  const go = (e) => {
+    e.preventDefault();
+    onClick?.();
+    const scroll = () => document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+    if (location.pathname === "/") scroll();
+    else {
+      navigate("/");
+      setTimeout(scroll, 150);
+    }
+  };
+  return (
+    <a href={item.href} className={className} onClick={go}>
       {item.label}
     </a>
   );

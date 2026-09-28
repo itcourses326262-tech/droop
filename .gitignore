@@ -39,3 +39,4 @@ firestore-debug.log
 
 # لقطات شاشة محلية
 shots/
+dist-preview/

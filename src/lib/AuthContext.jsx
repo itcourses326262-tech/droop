@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, useEffect, useCallback } fr
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { ensureUserProfile } from '@/lib/firebaseUsers';
+import { PREVIEW } from '@/lib/previewData';
 
 const AuthContext = createContext();
 
@@ -54,6 +55,11 @@ export const AuthProvider = ({ children }) => {
   };
 
   const navigateToLogin = () => {
+    // نسخة المعاينة تعمل داخل إطار بدون روابط حقيقية، فالتنقل يتم داخل التطبيق.
+    if (PREVIEW) {
+      window.dispatchEvent(new CustomEvent('droob:navigate', { detail: '/login' }));
+      return;
+    }
     const returnTo = window.location.pathname + window.location.search;
     window.location.href = '/login?returnTo=' + encodeURIComponent(returnTo);
   };
