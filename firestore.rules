@@ -2,48 +2,250 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // ---------- دوال مساعدة ----------
     function signedIn() { return request.auth != null; }
+    function me() { return request.auth.uid; }
+    function docPath(col, id) { return /databases/$(database)/documents/$(col)/$(id); }
+
     function isAdmin() {
       return signedIn()
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+        && exists(docPath('users', me()))
+        && get(docPath('users', me())).data.get('role', 'user') == 'admin';
     }
 
-    // ملف المستخدم: صاحبه فقط يقرأ ويكتب، ولا يستطيع ترقية نفسه إلى admin.
+    // صاحب مهنة = account_type في ملفه العام (والملف العام مطابق دائمًا لملفه الخاص، انظر أدناه).
+    function isProfessional(uid) {
+      return exists(docPath('public_profiles', uid))
+        && get(docPath('public_profiles', uid)).data.get('account_type', 'client') == 'professional';
+    }
+
+    function unchanged(key) {
+      return request.resource.data.get(key, null) == resource.data.get(key, null);
+    }
+
+    function changedKeys() { return request.resource.data.diff(resource.data).affectedKeys(); }
+
+    // التحويل إلى صاحب مهنة يتطلب رفع البطاقة والفيديو التعريفي (التوثيق النهائي يدوي من الأدمن).
+    function validAccountType(d) {
+      return d.get('account_type', 'client') == 'client'
+        || (d.get('account_type', '') == 'professional'
+            && d.get('id_card_uri', null) is string
+            && d.get('intro_video_uri', null) is string);
+    }
+
+    function textOk(v, maxLen) { return v is string && v.size() > 0 && v.size() <= maxLen; }
+
+    // ---------- الملف الخاص ----------
+    // صاحبه (والأدمن) فقط يقرأ ويكتب، ولا يستطيع ترقية نفسه إلى admin.
     match /users/{userId} {
-      allow read: if signedIn() && (request.auth.uid == userId || isAdmin());
-      allow create: if signedIn() && request.auth.uid == userId
-        && request.resource.data.get('role', 'user') == 'user';
-      allow update: if signedIn() && request.auth.uid == userId
-        && request.resource.data.get('role', 'user') == resource.data.get('role', 'user');
+      allow read: if signedIn() && (me() == userId || isAdmin());
+      allow create: if signedIn() && me() == userId
+        && request.resource.data.get('role', 'user') == 'user'
+        && validAccountType(request.resource.data);
+      allow update: if signedIn() && (
+        (me() == userId
+          && unchanged('role')
+          && (unchanged('account_type') || validAccountType(request.resource.data)))
+        || isAdmin()
+      );
       allow delete: if isAdmin();
     }
 
-    // طلبات الخدمة (بديل كيان ServiceRequest في Base44).
+    // ---------- الملف العام ----------
+    match /public_profiles/{userId} {
+      allow read: if true;
+
+      // account_type يجب أن يطابق الملف الخاص (يُكتبان في نفس الدفعة).
+      function matchesPrivateProfile() {
+        return request.resource.data.get('account_type', 'client')
+          == getAfter(docPath('users', userId)).data.get('account_type', 'client');
+      }
+
+      // تحديث التقييم يسمح به فقط مع إنشاء تقييم جديد لهذا الشخص في نفس الدفعة.
+      function isReviewUpdate() {
+        let d = request.resource.data;
+        let rid = d.get('last_review_id', '');
+        return changedKeys().hasOnly(['rating_sum', 'rating_count', 'last_review_id'])
+          && rid is string && rid != ''
+          && !exists(docPath('reviews', rid))
+          && existsAfter(docPath('reviews', rid))
+          && getAfter(docPath('reviews', rid)).data.pro_uid == userId
+          && getAfter(docPath('reviews', rid)).data.reviewer_uid == me()
+          && d.rating_count == resource.data.get('rating_count', 0) + 1
+          && d.rating_sum == resource.data.get('rating_sum', 0) + getAfter(docPath('reviews', rid)).data.rating;
+      }
+
+      allow create: if signedIn() && me() == userId
+        && matchesPrivateProfile()
+        && request.resource.data.get('verified', false) == false
+        && request.resource.data.get('rating_sum', 0) == 0
+        && request.resource.data.get('rating_count', 0) == 0;
+
+      allow update: if signedIn() && (
+        (me() == userId
+          && matchesPrivateProfile()
+          && !changedKeys().hasAny(['verified', 'rating_sum', 'rating_count', 'last_review_id']))
+        || (isAdmin() && changedKeys().hasOnly(['verified', 'updated_at']))
+        || isReviewUpdate()
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    // ---------- طلبات الخدمة ----------
     match /service_requests/{requestId} {
       // الطلبات تظهر للجميع في الصفحة الرئيسية.
       allow read: if true;
 
       allow create: if signedIn()
-        && request.resource.data.created_by == request.auth.uid
-        && request.resource.data.service_type is string
-        && request.resource.data.description is string
-        && request.resource.data.status == 'open';
+        && request.resource.data.created_by == me()
+        && textOk(request.resource.data.service_type, 100)
+        && textOk(request.resource.data.description, 5000)
+        && request.resource.data.status == 'open'
+        && request.resource.data.get('assigned_to', null) == null;
 
-      // أي مستخدم مسجّل يضيف تعليقًا أو رسالة فقط (لا يعدّل باقي الحقول).
-      // صاحب الطلب أو الأدمن يعدّل كل شيء عدا المالك.
+      // صاحب الطلب (أو الأدمن) فقط يعدّل: الحالة، الإسناد لصاحب مهنة…
       allow update: if signedIn() && (
-        (
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['comments', 'messages'])
-          && request.resource.data.get('comments', []).size() >= resource.data.get('comments', []).size()
-          && request.resource.data.get('messages', []).size() >= resource.data.get('messages', []).size()
-        )
-        || (
-          (resource.data.created_by == request.auth.uid || isAdmin())
-          && request.resource.data.created_by == resource.data.created_by
-        )
+        (resource.data.created_by == me()
+          && unchanged('created_by')
+          && request.resource.data.get('status', 'open') in ['open', 'in_progress', 'done', 'cancelled']
+          && (request.resource.data.get('assigned_to', null) == null
+              || isProfessional(request.resource.data.assigned_to)))
+        || isAdmin()
       );
 
-      allow delete: if signedIn() && (resource.data.created_by == request.auth.uid || isAdmin());
+      allow delete: if signedIn() && (resource.data.created_by == me() || isAdmin());
+
+      // التعليقات/العروض: أصحاب المهن يعلّقون على الطلبات المفتوحة، وصاحب الطلب يرد على طلبه.
+      match /comments/{commentId} {
+        function parentRequest() { return get(docPath('service_requests', requestId)).data; }
+
+        allow read: if true;
+
+        allow create: if signedIn()
+          && request.resource.data.author_uid == me()
+          && textOk(request.resource.data.text, 2000)
+          && request.resource.data.created_at == request.time
+          && (request.resource.data.get('offer_price', null) == null
+              || (request.resource.data.offer_price is number && request.resource.data.offer_price >= 0))
+          && (request.resource.data.get('author_type', 'client') == 'professional') == isProfessional(me())
+          && parentRequest().get('status', 'open') in ['open', 'in_progress']
+          && (isProfessional(me()) || parentRequest().created_by == me());
+
+        allow update: if false;
+
+        // الكاتب أو صاحب الطلب أو الأدمن يحذف التعليق.
+        allow delete: if signedIn() && (
+          resource.data.author_uid == me()
+          || parentRequest().created_by == me()
+          || isAdmin()
+        );
+      }
+    }
+
+    // ---------- المراسلة الخاصة ----------
+    // المحادثة بين شخصين فقط، ولا يقرؤها أو يكتب فيها غيرهما.
+    // يمكن بدء محادثة:
+    //   • بخصوص طلب: بين صاحب الطلب وصاحب مهنة.
+    //   • مباشرة (بدون طلب): مع صاحب مهنة من صفحته.
+    match /conversations/{cid} {
+      function participantsOk(d) {
+        return d.participants is list
+          && d.participants.size() == 2
+          && d.participants[0] < d.participants[1]
+          && me() in d.participants;
+      }
+
+      function idOk(d) {
+        let base = d.participants[0] + '_' + d.participants[1];
+        return (d.get('request_id', null) == null && cid == base)
+          || (d.get('request_id', null) is string && cid == base + '_' + d.request_id);
+      }
+
+      function mayStart(d) {
+        let a = d.participants[0];
+        let b = d.participants[1];
+        let rid = d.get('request_id', null);
+        return (rid == null
+            && ((a == me() && isProfessional(b)) || (b == me() && isProfessional(a))))
+          || (rid is string
+            && exists(docPath('service_requests', rid))
+            && ((get(docPath('service_requests', rid)).data.created_by == a && isProfessional(b))
+                || (get(docPath('service_requests', rid)).data.created_by == b && isProfessional(a))));
+      }
+
+      allow read: if signedIn() && me() in resource.data.participants;
+
+      allow create: if signedIn()
+        && participantsOk(request.resource.data)
+        && idOk(request.resource.data)
+        && mayStart(request.resource.data)
+        && !request.resource.data.keys().hasAny(['last_message', 'last_message_at', 'last_sender_uid']);
+
+      allow update: if signedIn()
+        && me() in resource.data.participants
+        && unchanged('participants')
+        && unchanged('request_id')
+        && changedKeys().hasOnly([
+          'participant_info', 'request_title', 'updated_at',
+          'last_message', 'last_message_at', 'last_sender_uid', 'last_read'
+        ])
+        && (!changedKeys().hasAny(['last_sender_uid']) || request.resource.data.last_sender_uid == me());
+
+      allow delete: if false;
+
+      match /messages/{messageId} {
+        function conversation() { return get(docPath('conversations', cid)).data; }
+
+        allow read: if signedIn() && me() in conversation().participants;
+
+        allow create: if signedIn()
+          && me() in conversation().participants
+          && request.resource.data.keys().hasOnly(['sender_uid', 'text', 'created_at'])
+          && request.resource.data.sender_uid == me()
+          && textOk(request.resource.data.text, 2000)
+          && request.resource.data.created_at == request.time;
+
+        allow update, delete: if false;
+      }
+    }
+
+    // ---------- التقييمات ----------
+    // تقييم واحد لكل طلب (معرّف التقييم = معرّف الطلب)، يكتبه صاحب الطلب بعد اكتماله
+    // لصاحب المهنة المسند إليه، ويُحدَّث متوسط التقييم في نفس الدفعة.
+    match /reviews/{requestId} {
+      function req() { return get(docPath('service_requests', requestId)).data; }
+
+      allow read: if true;
+
+      allow create: if signedIn()
+        && request.resource.data.reviewer_uid == me()
+        && request.resource.data.request_id == requestId
+        && request.resource.data.rating is int
+        && request.resource.data.rating >= 1
+        && request.resource.data.rating <= 5
+        && request.resource.data.get('text', '') is string
+        && request.resource.data.get('text', '').size() <= 1000
+        && req().created_by == me()
+        && req().get('status', '') == 'done'
+        && req().get('assigned_to', null) == request.resource.data.pro_uid
+        && getAfter(docPath('public_profiles', request.resource.data.pro_uid)).data.get('rating_count', 0)
+          == get(docPath('public_profiles', request.resource.data.pro_uid)).data.get('rating_count', 0) + 1;
+
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
+    // ---------- البلاغات ----------
+    match /reports/{reportId} {
+      allow create: if signedIn()
+        && request.resource.data.reporter_uid == me()
+        && request.resource.data.status == 'open'
+        && request.resource.data.target_type in ['request', 'comment', 'message', 'user']
+        && request.resource.data.target_id is string
+        && request.resource.data.get('reason', '') is string
+        && request.resource.data.get('reason', '').size() <= 1000;
+      allow read, update, delete: if isAdmin();
     }
   }
 }

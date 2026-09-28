@@ -1,28 +1,60 @@
-import { Star, BadgeCheck, Clock, ArrowLeft } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { Star, BadgeCheck, MapPin, ArrowLeft } from "lucide-react";
 import { siteImages } from "@/lib/siteImages";
+import { listProfessionals, ratingOf } from "@/lib/firebaseUsers";
+import UserAvatar from "@/components/common/UserAvatar";
 
-const pros = [
+// أمثلة تظهر فقط قبل تسجيل أي صاحب مهنة حقيقي.
+const samplePros = [
   {
+    id: null,
     name: "محمود عبد الرحمن",
     craft: "كهربائي معتمد",
     rating: 4.9,
-    jobs: 312,
-    eta: "٢٥ دقيقة",
+    reviews: 312,
     img: siteImages.pro1,
-    tags: ["أعطال طارئة", "تمديد", "إنارة"],
+    verified: true,
+    bio: "أعطال طارئة، تمديد، إنارة ولوحات كهربائية.",
   },
   {
+    id: null,
     name: "أحمد سمير",
     craft: "سبّاك محترف",
     rating: 4.8,
-    jobs: 268,
-    eta: "٣٠ دقيقة",
+    reviews: 268,
     img: siteImages.pro2,
-    tags: ["تسريبات", "سخانات", "تركيب"],
+    verified: true,
+    bio: "تسريبات، سخانات، تركيب أدوات صحية.",
   },
 ];
 
+const fromProfile = (p) => {
+  const r = ratingOf(p);
+  return {
+    id: p.id,
+    name: p.display_name || "صاحب مهنة",
+    craft: p.profession || "صاحب مهنة",
+    rating: r.count ? r.avg.toFixed(1) : null,
+    reviews: r.count,
+    img: p.profile_picture,
+    verified: !!p.verified,
+    city: p.city,
+    bio: p.bio,
+  };
+};
+
 export default function FeaturedPros() {
+  const [pros, setPros] = useState(samplePros);
+
+  useEffect(() => {
+    listProfessionals({ max: 30 })
+      .then((list) => {
+        if (list.length) setPros(list.slice(0, 4).map(fromProfile));
+      })
+      .catch(() => {});
+  }, []);
+
   return (
     <section id="pros" className="py-20 sm:py-28 bg-background">
       <div className="max-w-7xl mx-auto px-5 sm:px-8">
@@ -33,68 +65,67 @@ export default function FeaturedPros() {
               مهنيون موثوقون جاهزون لمساعدتك
             </h2>
           </div>
-          <a
-            href="#book"
+          <Link
+            to="/pros"
             className="text-sm font-semibold text-primary hover:text-primary/80 flex items-center gap-1.5"
           >
             عرض كل المحترفين
             <ArrowLeft size={16} />
-          </a>
+          </Link>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {pros.map((p) => (
+          {pros.map((p, i) => (
             <div
-              key={p.name}
+              key={p.id || i}
               className="group grid grid-cols-[auto_1fr] gap-5 p-5 rounded-3xl bg-card border border-border/70 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 transition-all"
             >
-              <div className="relative w-28 h-36 rounded-2xl overflow-hidden shrink-0">
-                <img src={p.img} alt={p.name} className="w-full h-full object-cover" loading="lazy" />
-                <span className="absolute top-2 right-2 w-6 h-6 rounded-full bg-accent flex items-center justify-center">
-                  <BadgeCheck size={14} className="text-[#0c1a19]" />
-                </span>
+              <div className="relative w-28 h-36 rounded-2xl overflow-hidden shrink-0 bg-secondary">
+                {p.img ? (
+                  <img src={p.img} alt={p.name} className="w-full h-full object-cover" loading="lazy" />
+                ) : (
+                  <UserAvatar name={p.name} className="w-full h-full rounded-none text-4xl" />
+                )}
+                {p.verified && (
+                  <span className="absolute top-2 right-2 w-6 h-6 rounded-full bg-accent flex items-center justify-center">
+                    <BadgeCheck size={14} className="text-[#0c1a19]" />
+                  </span>
+                )}
               </div>
 
-              <div className="flex flex-col">
+              <div className="flex flex-col min-w-0">
                 <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <h3 className="font-heading text-xl font-bold text-foreground">{p.name}</h3>
+                  <div className="min-w-0">
+                    <h3 className="font-heading text-xl font-bold text-foreground truncate">{p.name}</h3>
                     <p className="text-sm text-muted-foreground">{p.craft}</p>
                   </div>
-                  <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-accent/15 text-primary text-sm font-semibold">
-                    <Star size={14} className="fill-current" />
-                    {p.rating}
-                  </div>
+                  {p.rating && (
+                    <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-accent/15 text-primary text-sm font-semibold shrink-0">
+                      <Star size={14} className="fill-current" />
+                      {p.rating}
+                    </div>
+                  )}
                 </div>
 
-                <div className="flex flex-wrap gap-1.5 mt-3">
-                  {p.tags.map((t) => (
-                    <span
-                      key={t}
-                      className="px-2.5 py-1 rounded-full bg-secondary text-secondary-foreground text-xs"
-                    >
-                      {t}
+                {p.bio && <p className="mt-3 text-sm text-foreground/75 line-clamp-2">{p.bio}</p>}
+
+                <div className="flex flex-wrap items-center gap-4 mt-3 text-xs text-muted-foreground">
+                  {p.city && (
+                    <span className="flex items-center gap-1">
+                      <MapPin size={13} /> {p.city}
                     </span>
-                  ))}
+                  )}
+                  <span>{p.reviews ? `${p.reviews} تقييم` : "جديد على دروب"}</span>
                 </div>
 
-                <div className="flex items-center gap-4 mt-4 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-                    متاح الآن
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <Clock size={13} /> يصل خلال {p.eta}
-                  </span>
-                  <span>{p.jobs} مهمة منجزة</span>
-                </div>
-
-                <a
-                  href="#book"
-                  className="mt-4 px-5 py-2.5 rounded-full bg-primary text-primary-foreground text-sm font-semibold text-center hover:bg-primary/90 transition"
+                <Link
+                  to={p.id ? `/pros/${p.id}` : "/pros"}
+                  className="mt-auto pt-4"
                 >
-                  احجز الآن
-                </a>
+                  <span className="block px-5 py-2.5 rounded-full bg-primary text-primary-foreground text-sm font-semibold text-center hover:bg-primary/90 transition">
+                    عرض الملف والمراسلة
+                  </span>
+                </Link>
               </div>
             </div>
           ))}

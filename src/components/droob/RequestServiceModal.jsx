@@ -3,8 +3,7 @@ import { X, UploadCloud, Check, Image as ImageIcon, Video, Trash2, Loader2 } fro
 import { useAuth } from "@/lib/AuthContext";
 import { uploadFile } from "@/lib/storage";
 import { createServiceRequest } from "@/lib/serviceRequests";
-
-const serviceTypes = ["كهرباء", "سباكة", "دهان", "نجارة", "تكييف", "أخرى"];
+import { SERVICE_TYPES as serviceTypes } from "@/lib/constants";
 
 export default function RequestServiceModal({ open, onClose }) {
   const [files, setFiles] = useState([]);

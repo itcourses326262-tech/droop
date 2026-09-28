@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithGoogle, afterGoogleSignIn } from "@/lib/authActions";
 import { auth } from "@/lib/firebase";
 import { authErrorMessage } from "@/lib/authErrors";
 import { Button } from "@/components/ui/button";
@@ -27,7 +28,7 @@ export default function Login() {
       await signInWithEmailAndPassword(auth, email, password);
       window.location.href = returnTo;
     } catch (err) {
-      setError(authErrorMessage(err, "Invalid email or password"));
+      setError(authErrorMessage(err, "البريد الإلكتروني أو كلمة المرور غير صحيحة"));
     } finally {
       setLoading(false);
     }
@@ -36,26 +37,26 @@ export default function Login() {
   const handleGoogle = async () => {
     setError("");
     try {
-      await signInWithPopup(auth, new GoogleAuthProvider());
-      window.location.href = returnTo;
+      const { isNewUser } = await signInWithGoogle();
+      window.location.href = afterGoogleSignIn(isNewUser, returnTo);
     } catch (err) {
-      setError(authErrorMessage(err, "Google sign-in failed"));
+      setError(authErrorMessage(err, "تعذّر الدخول عبر Google"));
     }
   };
 
   return (
     <AuthLayout
       icon={LogIn}
-      title="Welcome back"
-      subtitle="Log in to your account"
+      title="مرحبًا بعودتك"
+      subtitle="سجّل الدخول إلى حسابك في دروب"
       footer={
         <>
-          Don't have an account?{" "}
+          ليس لديك حساب؟{" "}
           <Link
             to={"/register" + (returnTo !== "/" ? "?returnTo=" + encodeURIComponent(returnTo) : "")}
             className="text-primary font-medium hover:underline"
           >
-            Create one
+            أنشئ حسابًا
           </Link>
         </>
       }
@@ -65,8 +66,8 @@ export default function Login() {
         className="w-full h-12 text-sm font-medium mb-6"
         onClick={handleGoogle}
       >
-        <GoogleIcon className="w-5 h-5 mr-2" />
-        Continue with Google
+        <GoogleIcon className="w-5 h-5 ml-2" />
+        المتابعة عبر Google
       </Button>
 
       <div className="relative mb-6">
@@ -74,7 +75,7 @@ export default function Login() {
           <div className="w-full border-t border-border" />
         </div>
         <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-card px-3 text-muted-foreground">or</span>
+          <span className="bg-card px-3 text-muted-foreground">أو</span>
         </div>
       </div>
 
@@ -86,9 +87,9 @@ export default function Login() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">البريد الإلكتروني</Label>
           <div className="relative">
-            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
+            <Mail className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Input
               id="email"
               type="email"
@@ -97,20 +98,20 @@ export default function Login() {
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="pl-10 h-12"
+              className="pr-10 h-12"
               required
             />
           </div>
         </div>
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">كلمة المرور</Label>
             <Link to="/forgot-password" className="text-xs text-primary hover:underline">
-              Forgot password?
+              نسيت كلمة المرور؟
             </Link>
           </div>
           <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
+            <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Input
               id="password"
               type="password"
@@ -118,7 +119,7 @@ export default function Login() {
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="pl-10 h-12"
+              className="pr-10 h-12"
               required
             />
           </div>
@@ -126,11 +127,11 @@ export default function Login() {
         <Button type="submit" className="w-full h-12 font-medium" disabled={loading}>
           {loading ? (
             <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Logging in...
+              <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+              جارٍ الدخول…
             </>
           ) : (
-            "Log in"
+            "تسجيل الدخول"
           )}
         </Button>
       </form>

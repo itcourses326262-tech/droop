@@ -3,13 +3,13 @@ import { Link } from "react-router-dom";
 import {
   createUserWithEmailAndPassword,
   sendEmailVerification,
-  signInWithPopup,
-  GoogleAuthProvider,
   updateProfile,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { uploadFile } from "@/lib/storage";
 import { saveUserProfile } from "@/lib/firebaseUsers";
+import { signInWithGoogle, afterGoogleSignIn } from "@/lib/authActions";
+import { SERVICE_TYPES } from "@/lib/constants";
 import { authErrorMessage } from "@/lib/authErrors";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,6 +47,7 @@ export default function Register() {
   const [profileFile, setProfileFile] = useState(null);
   const [idCardFile, setIdCardFile] = useState(null);
   const [personalDetails, setPersonalDetails] = useState("");
+  const [profession, setProfession] = useState("");
   const [videoFile, setVideoFile] = useState(null);
   const [recorderOpen, setRecorderOpen] = useState(false);
   const [location, setLocation] = useState({ lat: null, lng: null, address: "" });
@@ -116,6 +117,7 @@ export default function Register() {
     if (!profileFile) return "الرجاء رفع صورة شخصية";
     if (!location.address.trim()) return "الرجاء إدخال المنطقة أو العنوان";
     if (accountType === "professional") {
+      if (!profession) return "الرجاء اختيار المهنة";
       if (!idCardFile) return "الرجاء رفع صورة البطاقة";
       if (!personalDetails.trim()) return "الرجاء إدخال التفاصيل الشخصية";
       if (!videoFile) return "الرجاء رفع فيديو تعريفي (١-٥ دقائق)";
@@ -178,6 +180,8 @@ export default function Register() {
       id_card_uri: idCardPath,
       intro_video_uri: introVideoPath,
       personal_details: personalDetails.trim(),
+      profession: accountType === "professional" ? profession : null,
+      bio: accountType === "professional" ? personalDetails.trim().slice(0, 1000) : null,
       location_lat: location.lat,
       location_lng: location.lng,
       location_address: location.address.trim(),
@@ -197,8 +201,8 @@ export default function Register() {
   const handleGoogle = async () => {
     setError("");
     try {
-      await signInWithPopup(auth, new GoogleAuthProvider());
-      window.location.href = safeReturnTo();
+      const { isNewUser } = await signInWithGoogle();
+      window.location.href = afterGoogleSignIn(isNewUser, safeReturnTo());
     } catch (err) {
       setError(authErrorMessage(err, "تعذّر الدخول عبر Google"));
     }
@@ -244,7 +248,7 @@ export default function Register() {
       }
     >
       <Button variant="outline" className="w-full h-12 text-sm font-medium mb-6" onClick={handleGoogle}>
-        <GoogleIcon className="w-5 h-5 mr-2" />
+        <GoogleIcon className="w-5 h-5 ml-2" />
         المتابعة عبر Google
       </Button>
 
@@ -393,6 +397,23 @@ export default function Register() {
           <div className="space-y-4 pt-2 border-t border-border mt-2">
             <p className="text-sm font-semibold text-primary">بيانات صاحب المهنة</p>
 
+            <div className="space-y-2">
+              <Label htmlFor="profession">المهنة</Label>
+              <select
+                id="profession"
+                value={profession}
+                onChange={(e) => setProfession(e.target.value)}
+                className="w-full h-12 px-3 rounded-md border border-input bg-transparent text-sm"
+              >
+                <option value="">اختر مهنتك</option>
+                {SERVICE_TYPES.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* ID card */}
             <div className="space-y-2">
               <Label>صورة البطاقة الشخصية</Label>
@@ -456,7 +477,7 @@ export default function Register() {
         <Button type="submit" className="w-full h-12 font-medium" disabled={loading}>
           {loading ? (
             <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              <Loader2 className="w-4 h-4 ml-2 animate-spin" />
               جارٍ الإنشاء…
             </>
           ) : (

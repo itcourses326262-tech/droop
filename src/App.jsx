@@ -10,6 +10,14 @@ import Login from '@/pages/Login';
 import Register from '@/pages/Register';
 import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
+import ProtectedRoute from '@/components/ProtectedRoute';
+import Messages from '@/pages/Messages';
+import Dashboard from '@/pages/Dashboard';
+import Profile from '@/pages/Profile';
+import Professionals from '@/pages/Professionals';
+import ProfessionalProfile from '@/pages/ProfessionalProfile';
+import RequestDetails from '@/pages/RequestDetails';
+import Admin from '@/pages/Admin';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth } = useAuth();
@@ -29,6 +37,22 @@ const AuthenticatedApp = () => {
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/pros" element={<Professionals />} />
+      <Route path="/pros/:uid" element={<ProfessionalProfile />} />
+      <Route path="/requests/:id" element={<RequestDetails />} />
+
+      {/* صفحات تتطلب تسجيل الدخول */}
+      <Route element={<ProtectedRoute />}>
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/messages" element={<Messages />} />
+        <Route path="/messages/:cid" element={<Messages />} />
+        <Route path="/profile" element={<Profile />} />
+      </Route>
+
+      {/* لوحة الإدارة: للأدمن فقط (والقواعد في Firestore تمنع غيره على أي حال) */}
+      <Route element={<ProtectedRoute requireAdmin />}>
+        <Route path="/admin" element={<Admin />} />
+      </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

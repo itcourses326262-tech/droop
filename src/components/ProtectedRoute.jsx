@@ -7,8 +7,8 @@ const DefaultFallback = () => (
   </div>
 );
 
-export default function ProtectedRoute({ fallback = <DefaultFallback />, unauthenticatedElement }) {
-  const { isAuthenticated, isLoadingAuth } = useAuth();
+export default function ProtectedRoute({ fallback = <DefaultFallback />, unauthenticatedElement, requireAdmin = false }) {
+  const { isAuthenticated, isLoadingAuth, isAdmin } = useAuth();
   const location = useLocation();
 
   if (isLoadingAuth) {
@@ -19,6 +19,10 @@ export default function ProtectedRoute({ fallback = <DefaultFallback />, unauthe
     return unauthenticatedElement ?? (
       <Navigate to={'/login?returnTo=' + encodeURIComponent(location.pathname + location.search)} replace />
     );
+  }
+
+  if (requireAdmin && !isAdmin) {
+    return <Navigate to="/" replace />;
   }
 
   return <Outlet />;

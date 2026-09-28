@@ -24,7 +24,7 @@ export default function ResetPassword() {
     e.preventDefault();
     setError("");
     if (newPassword !== confirmPassword) {
-      setError("Passwords do not match");
+      setError("كلمتا المرور غير متطابقتين");
       return;
     }
     setLoading(true);
@@ -32,7 +32,7 @@ export default function ResetPassword() {
       await confirmPasswordReset(auth, resetToken, newPassword);
       window.location.href = "/login";
     } catch (err) {
-      setError(authErrorMessage(err, "Failed to reset password"));
+      setError(authErrorMessage(err, "تعذّر إعادة تعيين كلمة المرور"));
     } finally {
       setLoading(false);
     }
@@ -42,16 +42,16 @@ export default function ResetPassword() {
     return (
       <AuthLayout
         icon={AlertTriangle}
-        title="Invalid reset link"
-        subtitle="This password reset link is missing or invalid"
+        title="رابط غير صالح"
+        subtitle="رابط إعادة التعيين ناقص أو غير صالح"
         footer={
           <Link to="/forgot-password" className="text-primary font-medium hover:underline">
-            Request a new link
+            اطلب رابطًا جديدًا
           </Link>
         }
       >
         <p className="text-sm text-foreground text-center">
-          The link you used appears to be incomplete. Please request a new password reset email.
+          يبدو أن الرابط غير مكتمل. اطلب رسالة إعادة تعيين جديدة.
         </p>
       </AuthLayout>
     );
@@ -60,8 +60,8 @@ export default function ResetPassword() {
   return (
     <AuthLayout
       icon={Lock}
-      title="New password"
-      subtitle="Enter your new password below"
+      title="كلمة مرور جديدة"
+      subtitle="أدخل كلمة المرور الجديدة"
     >
       {error && (
         <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
@@ -70,9 +70,9 @@ export default function ResetPassword() {
       )}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="password">New Password</Label>
+          <Label htmlFor="password">كلمة المرور الجديدة</Label>
           <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
+            <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Input
               id="password"
               type="password"
@@ -81,15 +81,15 @@ export default function ResetPassword() {
               placeholder="••••••••"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="pl-10 h-12"
+              className="pr-10 h-12"
               required
             />
           </div>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="confirm">Confirm Password</Label>
+          <Label htmlFor="confirm">تأكيد كلمة المرور</Label>
           <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
+            <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Input
               id="confirm"
               type="password"
@@ -97,7 +97,7 @@ export default function ResetPassword() {
               placeholder="••••••••"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="pl-10 h-12"
+              className="pr-10 h-12"
               required
             />
           </div>
@@ -105,11 +105,11 @@ export default function ResetPassword() {
         <Button type="submit" className="w-full h-12 font-medium" disabled={loading}>
           {loading ? (
             <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Resetting...
+              <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+              جارٍ الحفظ…
             </>
           ) : (
-            "Reset password"
+            "حفظ كلمة المرور"
           )}
         </Button>
       </form>

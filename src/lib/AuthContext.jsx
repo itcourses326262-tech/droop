@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { ensureUserProfile } from '@/lib/firebaseUsers';
@@ -11,6 +11,24 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
+  const loadUser = useCallback(async (fbUser) => {
+    let profile = null;
+    try {
+      profile = await ensureUserProfile(fbUser);
+    } catch (e) {
+      console.error('Loading user profile failed:', e);
+    }
+    setUser({
+      ...profile,
+      display_name: profile?.display_name || fbUser.displayName || null,
+      profile_picture: profile?.profile_picture || fbUser.photoURL || null,
+      uid: fbUser.uid,
+      id: fbUser.uid,
+      email: fbUser.email,
+      emailVerified: fbUser.emailVerified,
+    });
+  }, []);
+
   useEffect(() => {
     return onAuthStateChanged(auth, async (fbUser) => {
       if (!fbUser) {
@@ -19,17 +37,16 @@ export const AuthProvider = ({ children }) => {
         setIsLoadingAuth(false);
         return;
       }
-      let profile = null;
-      try {
-        profile = await ensureUserProfile(fbUser);
-      } catch (e) {
-        console.error('Loading user profile failed:', e);
-      }
-      setUser({ ...profile, uid: fbUser.uid, id: fbUser.uid, email: fbUser.email, emailVerified: fbUser.emailVerified });
+      await loadUser(fbUser);
       setIsAuthenticated(true);
       setIsLoadingAuth(false);
     });
-  }, []);
+  }, [loadUser]);
+
+  // يعيد تحميل الملف بعد تعديله (صفحة الملف الشخصي).
+  const refreshUser = useCallback(async () => {
+    if (auth.currentUser) await loadUser(auth.currentUser);
+  }, [loadUser]);
 
   const logout = async (shouldRedirect = true) => {
     await signOut(auth);
@@ -45,6 +62,9 @@ export const AuthProvider = ({ children }) => {
     <AuthContext.Provider value={{
       user,
       isAuthenticated,
+      isAdmin: user?.role === 'admin',
+      isProfessional: user?.account_type === 'professional',
+      refreshUser,
       isLoadingAuth,
       authChecked: !isLoadingAuth,
       logout,
