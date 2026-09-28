@@ -1,14 +1,14 @@
 // كل صور الموقع في مكان واحد.
-// ⚠️ هذه الصور ما زالت مستضافة على media.base44.com (من المشروع الأصلي).
-// لفصل الموقع عن Base44 نهائيًا: ضع الصور في public/images/ واستبدل كل رابط بمسار مثل "/images/hero.jpg"
-// (أو ارفعها إلى Firebase Storage/Hosting واستخدم روابطها).
+// الصور صور بديلة محلية موجودة في public/images/ (لم يعد الموقع يعتمد على media.base44.com).
+// لتغيير أي صورة: ضع ملفك الجديد في public/images/ (jpg أو png أو svg) وعدّل المسار هنا فقط.
 export const siteImages = {
-  category1: "https://media.base44.com/images/public/6ab3fe7bd798cd1d9d8eca7c/570108bce_generated_c367fa61.jpg",
-  category2: "https://media.base44.com/images/public/6ab3fe7bd798cd1d9d8eca7c/a40df07e9_generated_bff6a651.jpg",
-  category3: "https://media.base44.com/images/public/6ab3fe7bd798cd1d9d8eca7c/4fec86070_generated_f85e0109.jpg",
-  category4: "https://media.base44.com/images/public/6ab3fe7bd798cd1d9d8eca7c/ecaf8f876_generated_122be2f0.jpg",
-  category5: "https://media.base44.com/images/public/6ab3fe7bd798cd1d9d8eca7c/60ceda666_generated_48e10376.jpg",
-  category6: "https://media.base44.com/images/public/6ab3fe7bd798cd1d9d8eca7c/8038fb2cb_generated_e094d350.jpg",
-  pro1: "https://media.base44.com/images/public/6ab3fe7bd798cd1d9d8eca7c/456be3400_generated_c0940ea4.jpg",
-  pro2: "https://media.base44.com/images/public/6ab3fe7bd798cd1d9d8eca7c/63d7c403f_generated_88cba957.jpg",
+  category1: "/images/category1.svg", // كهرباء
+  category2: "/images/category2.svg", // سباكة
+  category3: "/images/category3.svg", // دهان ونقش
+  category4: "/images/category4.svg", // نجارة
+  category5: "/images/category5.svg", // تكييف وتبريد
+  hero: "/images/hero.jpg", // خلفية الواجهة الرئيسية
+  category6: "/images/category6.svg", // أعمال أخرى
+  pro1: "/images/pro1.svg", // محمود عبد الرحمن
+  pro2: "/images/pro2.svg", // أحمد سمير
 };

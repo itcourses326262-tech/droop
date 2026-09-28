@@ -13,8 +13,16 @@ const messages = {
   "auth/unauthorized-domain": "هذا النطاق غير مصرّح به في إعدادات Firebase Authentication",
   "auth/expired-action-code": "انتهت صلاحية الرابط — اطلب رابطًا جديدًا",
   "auth/invalid-action-code": "الرابط غير صالح أو استُخدم من قبل",
+  "auth/cancelled-popup-request": "تم إغلاق نافذة Google قبل إكمال الدخول",
+  "auth/operation-not-allowed": "طريقة الدخول هذه غير مفعّلة في Firebase Authentication",
+  "auth/configuration-not-found": "خدمة Authentication غير مفعّلة في مشروع Firebase",
+  "auth/invalid-api-key": "مفتاح Firebase غير صحيح — راجع إعدادات src/lib/firebase.js",
+  "auth/internal-error": "خطأ داخلي من Firebase — حاول مرة أخرى",
 };
 
 export function authErrorMessage(err, fallback = "حدث خطأ غير متوقع") {
-  return messages[err?.code] || fallback;
+  if (messages[err?.code]) return messages[err.code];
+  console.error(err);
+  // نُظهر رمز الخطأ غير المعروف ليسهل تشخيصه.
+  return err?.code ? `${fallback} (${err.code})` : fallback;
 }

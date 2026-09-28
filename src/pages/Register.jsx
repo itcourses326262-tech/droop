@@ -8,7 +8,7 @@ import {
   updateProfile,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { uploadFile } from "@/lib/storage";
+import { uploadFile, storageEnabled } from "@/lib/storage";
 import { saveUserProfile } from "@/lib/firebaseUsers";
 import { authErrorMessage } from "@/lib/authErrors";
 import { Button } from "@/components/ui/button";
@@ -113,12 +113,12 @@ export default function Register() {
 
   const validateProfile = () => {
     if (!displayName.trim()) return "الرجاء إدخال الاسم";
-    if (!profileFile) return "الرجاء رفع صورة شخصية";
+    if (storageEnabled && !profileFile) return "الرجاء رفع صورة شخصية";
     if (!location.address.trim()) return "الرجاء إدخال المنطقة أو العنوان";
     if (accountType === "professional") {
-      if (!idCardFile) return "الرجاء رفع صورة البطاقة";
+      if (storageEnabled && !idCardFile) return "الرجاء رفع صورة البطاقة";
       if (!personalDetails.trim()) return "الرجاء إدخال التفاصيل الشخصية";
-      if (!videoFile) return "الرجاء رفع فيديو تعريفي (١-٥ دقائق)";
+      if (storageEnabled && !videoFile) return "الرجاء رفع فيديو تعريفي (١-٥ دقائق)";
     }
     return null;
   };
@@ -151,12 +151,12 @@ export default function Register() {
   // يرفع الملفات إلى Firebase Storage ويحفظ ملف المستخدم في Firestore (users/{uid}).
   const saveProfile = async (user) => {
     const uid = user.uid;
-    const profile = profileFile
+    const profile = storageEnabled && profileFile
       ? await uploadFile(`users/${uid}/public`, profileFile)
       : null;
     let idCardPath = null;
     let introVideoPath = null;
-    if (accountType === "professional") {
+    if (storageEnabled && accountType === "professional") {
       if (idCardFile) {
         idCardPath = (await uploadFile(`users/${uid}/private`, idCardFile, { isPrivate: true })).path;
       }
@@ -312,6 +312,7 @@ export default function Register() {
         </div>
 
         {/* Profile picture */}
+        {storageEnabled && (
         <div className="space-y-2">
           <Label>الصورة الشخصية</Label>
           <label className="flex items-center gap-3 cursor-pointer rounded-xl border border-dashed border-border hover:border-primary/50 px-4 py-3 transition">
@@ -328,6 +329,7 @@ export default function Register() {
             <input type="file" accept="image/*" onChange={onProfileChange} className="hidden" />
           </label>
         </div>
+        )}
 
         {/* Location */}
         <div className="space-y-2">
@@ -394,6 +396,7 @@ export default function Register() {
             <p className="text-sm font-semibold text-primary">بيانات صاحب المهنة</p>
 
             {/* ID card */}
+            {storageEnabled && (
             <div className="space-y-2">
               <Label>صورة البطاقة الشخصية</Label>
               <label className="flex items-center gap-3 cursor-pointer rounded-xl border border-dashed border-border hover:border-primary/50 px-4 py-3 transition">
@@ -410,6 +413,7 @@ export default function Register() {
                 <input type="file" accept="image/*" onChange={onIdCardChange} className="hidden" />
               </label>
             </div>
+            )}
 
             {/* Personal details */}
             <div className="space-y-2">
@@ -424,6 +428,7 @@ export default function Register() {
             </div>
 
             {/* Intro video */}
+            {storageEnabled && (
             <div className="space-y-2">
               <Label>فيديو تعريفي (من دقيقة إلى ٥ دقائق)</Label>
               <label className="flex items-center gap-3 cursor-pointer rounded-xl border border-dashed border-border hover:border-primary/50 px-4 py-3 transition">
@@ -444,6 +449,7 @@ export default function Register() {
                 تسجيل فيديو مباشر
               </button>
             </div>
+            )}
           </div>
         )}
 
