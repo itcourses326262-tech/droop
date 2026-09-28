@@ -36,3 +36,6 @@ dist-ssr
 firebase-debug.log
 firestore-debug.log
 !.env.example
+
+# لقطات شاشة محلية
+shots/
